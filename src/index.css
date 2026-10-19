@@ -1,0 +1,177 @@
+@import "tailwindcss";
+
+:root {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system,
+        BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #172033;
+    background: #f7f8fa;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    --color-brand: #263b70;
+    --color-brand-hover: #1c2d57;
+    --color-page: #f7f8fa;
+    --color-surface: #ffffff;
+    --color-border: #e8ebf0;
+    --color-muted: #758096;
+    --color-success: #16845b;
+    --color-danger: #d64545;
+}
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+    color: #e2e8f0;
+    background: #0f172a;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] [class~="bg-white/95"],
+html[data-theme="dark"] [class~="bg-[#f7f8fa]"],
+html[data-theme="dark"] [class~="bg-[#fafbfc]"],
+html[data-theme="dark"] [class~="bg-slate-50"],
+html[data-theme="dark"] [class~="bg-slate-100"],
+html[data-theme="dark"] [class~="bg-gray-50"],
+html[data-theme="dark"] [class~="bg-gray-100"] {
+    background-color: #0f172a;
+}
+
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] [class~="bg-white/95"],
+html[data-theme="dark"] [class~="bg-[#f5f6f8]"],
+html[data-theme="dark"] [class~="bg-slate-50"],
+html[data-theme="dark"] [class~="bg-slate-100"],
+html[data-theme="dark"] [class~="bg-gray-50"],
+html[data-theme="dark"] [class~="bg-gray-100"] {
+    background-color: #1e293b;
+}
+
+html[data-theme="dark"] [class~="bg-[#f0f3ff]"],
+html[data-theme="dark"] [class~="bg-[#e9edff]"],
+html[data-theme="dark"] [class~="bg-blue-50"],
+html[data-theme="dark"] [class~="bg-violet-50"],
+html[data-theme="dark"] [class~="bg-emerald-50"],
+html[data-theme="dark"] [class~="bg-red-50"] {
+    background-color: #263653;
+}
+
+html[data-theme="dark"] [class~="bg-[#f7f8fa]"],
+html[data-theme="dark"] [class~="bg-[#fafbfc]"] {
+    background-color: #0f172a;
+}
+
+html[data-theme="dark"] [class~="text-slate-900"],
+html[data-theme="dark"] [class~="text-slate-800"],
+html[data-theme="dark"] [class~="text-slate-700"],
+html[data-theme="dark"] [class~="text-gray-900"],
+html[data-theme="dark"] [class~="text-gray-800"],
+html[data-theme="dark"] [class~="text-gray-700"],
+html[data-theme="dark"] [class~="text-[#172033]"] {
+    color: #e2e8f0;
+}
+
+html[data-theme="dark"] [class~="text-slate-600"],
+html[data-theme="dark"] [class~="text-slate-500"],
+html[data-theme="dark"] [class~="text-gray-600"],
+html[data-theme="dark"] [class~="text-gray-500"] {
+    color: #94a3b8;
+}
+
+html[data-theme="dark"] [class~="text-[#354c9b]"],
+html[data-theme="dark"] [class~="text-[#263b70]"],
+html[data-theme="dark"] [class~="text-blue-700"] {
+    color: #a5b4fc;
+}
+
+html[data-theme="dark"] [class~="border-slate-100"],
+html[data-theme="dark"] [class~="border-slate-200"],
+html[data-theme="dark"] [class~="border-slate-300"],
+html[data-theme="dark"] [class~="border-gray-100"],
+html[data-theme="dark"] [class~="border-gray-200"],
+html[data-theme="dark"] [class~="border-[#e8ebf0]"],
+html[data-theme="dark"] [class~="border-[#e4e8ef]"],
+html[data-theme="dark"] [class~="border-[#edf0f4]"] {
+    border-color: #334155;
+}
+
+html[data-theme="dark"] [class~="divide-slate-100"] > :not(:last-child),
+html[data-theme="dark"] [class~="divide-[#edf0f4]"] > :not(:last-child) {
+    border-color: #334155;
+}
+
+html[data-theme="dark"] [class~="hover:bg-slate-50"]:hover,
+html[data-theme="dark"] [class~="hover:bg-slate-100"]:hover,
+html[data-theme="dark"] [class~="hover:bg-[#fafbfc]"]:hover {
+    background-color: #334155;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+    color: #e2e8f0;
+}
+
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder {
+    color: #94a3b8;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 320px;
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+::selection {
+    background: #dce6ff;
+    color: #172033;
+}
+
+#root {
+    min-height: 100vh;
+}
+
+.page-container {
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+    padding: 32px;
+}
+
+@media (max-width: 640px) {
+    .page-container {
+        padding: 20px 16px;
+    }
+}
