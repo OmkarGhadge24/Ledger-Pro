@@ -20,6 +20,8 @@ import TransactionHistory from "./pages/transactions/TransactionHistory";
 import Ledger from "./pages/ledger/Ledger";
 import Profile from "./pages/profile/Profile";
 import Settings from "./pages/settings/Settings";
+import SystemConsole from "./pages/system/SystemConsole";
+import LoadingState from "./components/ui/LoadingState";
 
 function RootRedirect() {
   const { isAuthenticated } = useAuth();
@@ -33,6 +35,35 @@ function RootRedirect() {
 }
 
 function AppRoutes() {
+  const { user, isInitializing, authError, retrySession } = useAuth();
+  const isSystemUser = user?.systemUser === true;
+
+  if (isInitializing) {
+    return <LoadingState label="Verifying your session..." />;
+  }
+
+  if (authError) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] p-6">
+        <section className="max-w-md rounded-2xl border border-[#e8ebf0] bg-white p-7 text-center">
+          <h1 className="text-lg font-semibold text-[#172033]">
+            Session verification failed
+          </h1>
+          <p role="alert" className="mt-3 text-sm leading-6 text-slate-600">
+            {authError}
+          </p>
+          <button
+            type="button"
+            onClick={retrySession}
+            className="mt-5 rounded-xl bg-[#1d2b46] px-5 py-3 text-sm font-medium text-white"
+          >
+            Try again
+          </button>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <Routes>
       {/* Public routes */}
@@ -43,43 +74,29 @@ function AppRoutes() {
       {/* Protected application routes */}
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          {/* Dashboard */}
-          <Route
-            path="/dashboard"
-            element={<Dashboard />}
-          />
-
-          {/* Accounts */}
-          <Route
-            path="/accounts"
-            element={<Accounts />}
-          />
-
-          <Route
-            path="/accounts/new"
-            element={<CreateAccount />}
-          />
-
-          <Route
-            path="/accounts/:accountId"
-            element={<AccountDetails />}
-          />
-
-          {/* Transactions */}
-          <Route
-            path="/transactions"
-            element={<Transfers />}
-          />
-          <Route
-            path="/transactions/history"
-            element={<TransactionHistory />}
-          />
-
-          {/* Ledger */}
-          <Route
-            path="/ledger"
-            element={<Ledger />}
-          />
+          {isSystemUser ? (
+            <>
+              <Route path="/dashboard" element={<SystemConsole />} />
+              <Route path="/accounts" element={<SystemConsole />} />
+              <Route path="/accounts/*" element={<SystemConsole />} />
+              <Route path="/transactions" element={<SystemConsole />} />
+              <Route path="/transactions/*" element={<SystemConsole />} />
+              <Route path="/ledger" element={<SystemConsole />} />
+            </>
+          ) : (
+            <>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/accounts" element={<Accounts />} />
+              <Route path="/accounts/new" element={<CreateAccount />} />
+              <Route path="/accounts/:accountId" element={<AccountDetails />} />
+              <Route path="/transactions" element={<Transfers />} />
+              <Route
+                path="/transactions/history"
+                element={<TransactionHistory />}
+              />
+              <Route path="/ledger" element={<Ledger />} />
+            </>
+          )}
 
           {/* Profile */}
           <Route path="/profile" element={<Profile />} />

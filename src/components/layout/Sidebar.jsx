@@ -11,18 +11,25 @@ import {
     UserRound,
     Wallet,
     X,
-    RotateCcwClock
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
-const navigation = [
+const customerNavigation = [
     { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
     { label: "Accounts", path: "/accounts", icon: Wallet },
     { label: "Transactions", path: "/transactions", icon: ArrowLeftRight },
     { label: "Ledger entries", path: "/ledger", icon: BookOpen },
     { label: "Profile", path: "/profile", icon: UserRound },
     { label: "Settings", path: "/settings", icon: Settings },
-    { label: "Transaction History", path: "/transactions/history", icon: RotateCcwClock, }
+];
+
+const systemNavigation = [
+    { label: "System overview", path: "/dashboard", icon: LayoutDashboard },
+    { label: "Customer accounts", path: "/accounts", icon: Wallet },
+    { label: "Initial funding", path: "/transactions", icon: ArrowLeftRight },
+    { label: "Funding ledger", path: "/ledger", icon: BookOpen },
+    { label: "Profile", path: "/profile", icon: UserRound },
+    { label: "Settings", path: "/settings", icon: Settings },
 ];
 
 export default function Sidebar({
@@ -31,8 +38,11 @@ export default function Sidebar({
     mobileOpen,
     onClose,
 }) {
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const navigate = useNavigate();
+    const navigation = user?.systemUser
+        ? systemNavigation
+        : customerNavigation;
 
     async function handleLogout() {
         await logout();

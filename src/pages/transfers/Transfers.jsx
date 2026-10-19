@@ -41,10 +41,14 @@ export default function Transfers() {
     const [accounts, setAccounts] = useState([]);
     const [balances, setBalances] = useState({});
     const [loadingAccounts, setLoadingAccounts] = useState(true);
+    const [loadingBalance, setLoadingBalance] = useState(false);
     const [pageError, setPageError] = useState("");
+    const [balanceError, setBalanceError] = useState("");
 
     const [debitAccount, setDebitAccount] = useState("");
     const [creditAccount, setCreditAccount] = useState("");
+    const [recipientType, setRecipientType] = useState("own");
+    const [recipientAccountId, setRecipientAccountId] = useState("");
     const [amount, setAmount] = useState("");
     const [reviewing, setReviewing] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -59,25 +63,7 @@ export default function Transfers() {
         try {
             const data = await accountService.getAccounts();
             const list = Array.isArray(data) ? data : [];
-
             setAccounts(list);
-
-            const balanceResults = await Promise.allSettled(
-                list.map(async (account) => ({
-                    id: account._id,
-                    balance: await accountService.getBalance(account._id),
-                }))
-            );
-
-            const nextBalances = {};
-
-            balanceResults.forEach((item) => {
-                if (item.status === "fulfilled") {
-                    nextBalances[item.value.id] = Number(item.value.balance);
-                }
-            });
-
-            setBalances(nextBalances);
         } catch (error) {
             setPageError(getApiError(error));
         } finally {
@@ -86,8 +72,42 @@ export default function Transfers() {
     }, []);
 
     useEffect(() => {
+        // The request owns loading state until the account list is returned.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadAccounts();
     }, [loadAccounts, refreshKey]);
+
+    useEffect(() => {
+        if (!debitAccount) return undefined;
+
+        let isCurrentRequest = true;
+        // Keep balance loading state synchronized with the selected source account.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLoadingBalance(true);
+        setBalanceError("");
+
+        accountService.getBalance(debitAccount)
+            .then((balance) => {
+                if (isCurrentRequest) {
+                    setBalances((current) => ({
+                        ...current,
+                        [debitAccount]: Number(balance),
+                    }));
+                }
+            })
+            .catch((error) => {
+                if (isCurrentRequest) {
+                    setBalanceError(getApiError(error));
+                }
+            })
+            .finally(() => {
+                if (isCurrentRequest) setLoadingBalance(false);
+            });
+
+        return () => {
+            isCurrentRequest = false;
+        };
+    }, [debitAccount, refreshKey]);
 
     const activeAccounts = useMemo(
         () => accounts.filter((account) => account.status === "ACTIVE"),
@@ -95,19 +115,26 @@ export default function Transfers() {
     );
 
     const source = accounts.find((account) => account._id === debitAccount);
+    const targetAccountId = recipientType === "own"
+        ? creditAccount
+        : recipientAccountId.trim();
     const destination = accounts.find(
-        (account) => account._id === creditAccount
+        (account) => account._id === targetAccountId
     );
 
     const sourceBalance = source ? balances[source._id] : undefined;
     const parsedAmount = Number(amount);
 
     function validateTransfer() {
-        if (!debitAccount || !creditAccount) {
-            return "Select both source and destination accounts.";
+        if (!debitAccount || !targetAccountId) {
+            return "Select a source account and choose or enter a destination account ID.";
         }
 
-        if (debitAccount === creditAccount) {
+        if (!/^[a-fA-F0-9]{24}$/.test(targetAccountId)) {
+            return "Enter a valid 24-character destination account ID.";
+        }
+
+        if (debitAccount.toLowerCase() === targetAccountId.toLowerCase()) {
             return "Source and destination accounts must be different.";
         }
 
@@ -120,6 +147,10 @@ export default function Transfers() {
             return "Enter a positive amount with no more than two decimal places.";
         }
 
+        if (loadingBalance) {
+            return "Please wait while the source balance loads.";
+        }
+
         if (sourceBalance === undefined || !Number.isFinite(sourceBalance)) {
             return "The source balance is unavailable. Refresh your accounts and try again.";
         }
@@ -128,7 +159,7 @@ export default function Transfers() {
             return "The transfer amount exceeds the available balance.";
         }
 
-        if (source?.currency !== destination?.currency) {
+        if (destination && source?.currency !== destination.currency) {
             return "Transfers between different currencies are not supported.";
         }
 
@@ -163,13 +194,13 @@ export default function Transfers() {
 
             const response = await transactionService.transfer({
                 debitAccount,
-                creditAccount,
+                creditAccount: targetAccountId,
                 amount: parsedAmount,
                 idempotencyKey,
             });
 
             setResult({
-                success: true,
+                success: response.Transaction?.status === "SUCCESS",
                 message:
                     response.Message ||
                     "The server accepted the transfer request.",
@@ -180,6 +211,8 @@ export default function Transfers() {
             setAmount("");
             setDebitAccount("");
             setCreditAccount("");
+            setRecipientAccountId("");
+            setRecipientType("own");
             setRefreshKey((value) => value + 1);
         } catch (error) {
             setFormError(getApiError(error));
@@ -224,30 +257,30 @@ export default function Transfers() {
                         Try again
                     </button>
                 </div>
-            ) : activeAccounts.length < 2 ? (
+            ) : activeAccounts.length === 0 ? (
                 <section className="rounded-2xl border border-[#e8ebf0] bg-white p-8 sm:p-10">
                     <Wallet size={28} className="text-[#354c9b]" />
                     <h2 className="mt-5 text-xl font-semibold text-[#172033]">
-                        Two active accounts are required
+                        An active source account is required
                     </h2>
                     <p className="mt-2 max-w-lg text-sm leading-6 text-slate-500">
-                        Create at least two active accounts before initiating a transfer.
-                        Your backend validates account ownership, status, and available
-                        balance.
+                        Create an active account before initiating a transfer. You can
+                        send to one of your other accounts or enter another customer's
+                        account ID.
                     </p>
                 </section>
-            ) : result?.success ? (
+            ) : result ? (
                 <section className="mx-auto max-w-2xl rounded-2xl border border-[#e8ebf0] bg-white p-7 text-center sm:p-10">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-                        <CheckCircle2 size={28} />
+                    <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${result.success ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                        {result.success ? <CheckCircle2 size={28} /> : <CircleAlert size={28} />}
                     </div>
 
-                    <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                        Server response received
+                    <p className={`mt-5 text-xs font-semibold uppercase tracking-[0.16em] ${result.success ? "text-emerald-700" : "text-amber-700"}`}>
+                        {result.success ? "Transfer completed" : "Transfer status"}
                     </p>
 
                     <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#172033]">
-                        Transfer response
+                        {result.success ? "Money transferred" : "Transfer is processing"}
                     </h2>
 
                     <p className="mt-3 text-sm leading-6 text-slate-500">
@@ -334,9 +367,16 @@ export default function Transfers() {
                                 {source && (
                                     <p className="mt-2 text-xs text-slate-500">
                                         Available balance:{" "}
-                                        {balances[source._id] === undefined
-                                            ? "Unavailable"
+                                        {loadingBalance
+                                            ? "Loading..."
+                                            : balances[source._id] === undefined
+                                                ? "Unavailable"
                                             : formatCurrency(balances[source._id])}
+                                    </p>
+                                )}
+                                {balanceError && (
+                                    <p role="alert" className="mt-2 text-xs text-red-600">
+                                        {balanceError}
                                     </p>
                                 )}
                             </div>
@@ -348,31 +388,74 @@ export default function Transfers() {
                             </div>
 
                             <div>
-                                <label
-                                    htmlFor="creditAccount"
-                                    className="mb-2 block text-sm font-medium text-slate-700"
-                                >
+                                <p className="mb-2 block text-sm font-medium text-slate-700">
                                     To account
-                                </label>
-                                <select
-                                    id="creditAccount"
-                                    value={creditAccount}
-                                    onChange={(event) => {
-                                        setCreditAccount(event.target.value);
-                                        setFormError("");
-                                    }}
-                                    className="h-12 w-full rounded-xl border border-[#e4e8ef] bg-white px-4 text-sm outline-none focus:border-[#526a9d]"
-                                    required
-                                >
-                                    <option value="">Select destination account</option>
-                                    {activeAccounts
-                                        .filter((account) => account._id !== debitAccount)
-                                        .map((account) => (
-                                            <option key={account._id} value={account._id}>
-                                                {accountLabel(account)}
-                                            </option>
-                                        ))}
-                                </select>
+                                </p>
+                                <div className="mb-3 grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        aria-pressed={recipientType === "own"}
+                                        onClick={() => {
+                                            setRecipientType("own");
+                                            setFormError("");
+                                        }}
+                                        className={`rounded-xl border px-3 py-2.5 text-sm ${recipientType === "own" ? "border-[#526a9d] bg-blue-50 text-[#263b70]" : "border-[#e4e8ef] text-slate-600"}`}
+                                    >
+                                        My account
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-pressed={recipientType === "other"}
+                                        onClick={() => {
+                                            setRecipientType("other");
+                                            setFormError("");
+                                        }}
+                                        className={`rounded-xl border px-3 py-2.5 text-sm ${recipientType === "other" ? "border-[#526a9d] bg-blue-50 text-[#263b70]" : "border-[#e4e8ef] text-slate-600"}`}
+                                    >
+                                        Another person's account
+                                    </button>
+                                </div>
+
+                                {recipientType === "own" ? (
+                                    <select
+                                        id="creditAccount"
+                                        value={creditAccount}
+                                        onChange={(event) => {
+                                            setCreditAccount(event.target.value);
+                                            setFormError("");
+                                        }}
+                                        className="h-12 w-full rounded-xl border border-[#e4e8ef] bg-white px-4 text-sm outline-none focus:border-[#526a9d]"
+                                        required
+                                    >
+                                        <option value="">Select your other account</option>
+                                        {activeAccounts
+                                            .filter((account) => account._id !== debitAccount)
+                                            .map((account) => (
+                                                <option key={account._id} value={account._id}>
+                                                    {accountLabel(account)} — {account._id}
+                                                </option>
+                                            ))}
+                                    </select>
+                                ) : (
+                                    <>
+                                        <input
+                                            id="creditAccount"
+                                            value={recipientAccountId}
+                                            onChange={(event) => {
+                                                setRecipientAccountId(event.target.value.trim());
+                                                setFormError("");
+                                            }}
+                                            placeholder="Enter recipient's 24-character account ID"
+                                            autoComplete="off"
+                                            className="h-12 w-full rounded-xl border border-[#e4e8ef] px-4 text-sm outline-none focus:border-[#526a9d]"
+                                            required
+                                        />
+                                        <p className="mt-2 text-xs text-slate-500">
+                                            Ask the recipient for the full account ID shown on their Accounts page.
+                                            The server verifies the account, status, and currency.
+                                        </p>
+                                    </>
+                                )}
                             </div>
 
                             <div>
@@ -435,7 +518,8 @@ export default function Transfers() {
 
                         <ul className="mt-3 space-y-3 text-sm leading-6 text-slate-500">
                             <li>Only active accounts are selectable.</li>
-                            <li>The backend checks account ownership and available balance.</li>
+                            <li>Choose another one of your accounts or enter another customer's account ID.</li>
+                            <li>The backend verifies recipient status, currency, source ownership, and available funds.</li>
                             <li>Each submission uses an idempotency key.</li>
                             <li>Successful transfers create ledger entries on the backend.</li>
                         </ul>
@@ -479,14 +563,14 @@ export default function Transfers() {
                             <div>
                                 <p className="text-xs text-slate-400">From</p>
                                 <p className="mt-1 break-all text-sm font-medium text-slate-800">
-                                    {source ? accountLabel(source) : "—"}
+                                    {source ? source._id : "—"}
                                 </p>
                             </div>
 
                             <div>
                                 <p className="text-xs text-slate-400">To</p>
                                 <p className="mt-1 break-all text-sm font-medium text-slate-800">
-                                    {destination ? accountLabel(destination) : "—"}
+                                    {targetAccountId || "—"}
                                 </p>
                             </div>
 
